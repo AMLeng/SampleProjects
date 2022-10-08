@@ -6,6 +6,8 @@
 #include <cassert>
 
 //TODO: Add deletion, keep track of AVL invariant instead of height
+//TODO: Add constructor for the tree given an array of T
+//TODO: Add iterator
 //Possible extensions: Make constexpr? (Currently not easily possible since unique_ptr isn't constexpr until C++23), add noexcept?
 
 namespace binary_search_tree{
@@ -14,7 +16,7 @@ template <typename T> class BST{
     public:
         void add(T key){TreeNode::add_node(root, key);}
 
-        bool find(T key) const{return (bool) root->find_node(key);}
+        bool find(T key) const{return (bool) root->find(key);}
 
         void pre_order(){root->pre_order();}
 
@@ -48,15 +50,13 @@ template <typename T> class BST{
                         p_subtree_root = std::make_unique<TreeNode>(key);
                     }
                     if(key < p_subtree_root->data){
-                        //Add node to the left
                         add_node(p_subtree_root->left, key);
                     }else if(key > p_subtree_root->data){
-                        //Add node to the right
                         add_node(p_subtree_root->right, key);
                     }
                     p_subtree_root->height = p_subtree_root->compute_height();
 
-                    //Ensure that the tree rooted at "this" is AVL
+                    //Ensure that the tree rooted at p_subtree_root is AVL
                     rebalance(p_subtree_root);
                 }
 
@@ -68,14 +68,14 @@ template <typename T> class BST{
                 int height;
 
                 //Helper method for find, since we don't want to be giving access to nodes in the outwards facing interface
-                TreeNode* find_node(T key) const{
+                //We return a raw pointer for a non-owning ``observer'' pointer
+                const TreeNode* find_node(T key) const{
+                    if(!this){return nullptr;}
                     if(data == key){
-                        return &this;
+                        return this;
                     }else if(key < data){
-                        if(!this->left){return nullptr;}
                         return this->left->find_node(key);
                     }else{
-                        if(!this->right){return nullptr;}
                         return this->right->find_node(key);
                     }
                 }
