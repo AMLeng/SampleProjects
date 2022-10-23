@@ -10,15 +10,18 @@
 //TODO: Add iterator
 //Possible extensions: Make constexpr? (Currently not easily possible since unique_ptr isn't constexpr until C++23), add noexcept?
 
+//Implementation of an AVL tree to practice working with unique_ptr
 namespace binary_search_tree{
 
 template <typename T> class BST{
     public:
         void add(T key){TreeNode::add_node(root, key);}
 
+        void remove(T key){TreeNode::remove_node(root, key);}
+
         bool find(T key) const{return (bool) root->find(key);}
 
-        void pre_order(){root->pre_order();}
+        void pre_order(){root->pre_order();std::cout<<"\n";}
 
     private:
         class TreeNode;
@@ -29,15 +32,15 @@ template <typename T> class BST{
                 TreeNode() = default;
                 TreeNode(T key): height(1), data(key), left(nullptr), right(nullptr){}
 
-                bool find(T key) const{return (bool) find_node(key);}
-
-                //Remove data from the tree, returning true if successful, and false if the given data was not in the tree
-                /*bool remove(T key){
-                  bool node_removed = false;
-                //Code to remove node here
-                //Reupdate heights
-                //Ensure that the tree is AVL
+                /*bool check_correct_heights(){
+                    if(!this){return true;}
+                    if(this->height != this->compute_height()){
+                        return false;
+                    }
+                    return (this->left->check_correct_heights() && this->right->check_correct_heights());
                 }*/
+
+                bool find(T key) const{return (bool) find_node(key);}
 
                 void pre_order(){
                     if(this){std::cout << this->data << " ";}
@@ -58,6 +61,37 @@ template <typename T> class BST{
 
                     //Ensure that the tree rooted at p_subtree_root is AVL
                     rebalance(p_subtree_root);
+                }
+
+                static void remove_node(std::unique_ptr<TreeNode>& p_subtree_root, T key){
+                    if(!p_subtree_root){
+                        return;
+                    }
+                    if(key < p_subtree_root->data){
+                        remove_node(p_subtree_root->left, key);
+                    }else if(key > p_subtree_root->data){
+                        remove_node(p_subtree_root->right, key);
+                    }else{
+                        //Two child case, swap with inorder successor
+                        if(p_subtree_root -> left && p_subtree_root -> right){
+                            auto temp_left = std::move(p_subtree_root->left);
+                            auto temp_right = std::move(p_subtree_root->right);
+                            remove_with_replacement(p_subtree_root,temp_right); 
+                            p_subtree_root -> left = std::move(temp_left);
+                            p_subtree_root -> right = std::move(temp_right);
+                        }//Zero or one child case
+                        else{
+                            auto temp = p_subtree_root -> left ? std::move(p_subtree_root ->left) : std::move(p_subtree_root->right);
+                            p_subtree_root = std::move(temp);
+                        }
+                    }
+                    //We could have deleted p_subtree_root so check that it is non-null
+                    if(p_subtree_root){
+                        p_subtree_root->height = p_subtree_root->compute_height();
+
+                        //Ensure that the tree rooted at p_subtree_root is AVL
+                        rebalance(p_subtree_root);
+                    }
                 }
 
             private:
@@ -150,6 +184,20 @@ template <typename T> class BST{
                         }
                     }
                 }
+
+                //Replace the node_to_remove with the minimum node in the "current" subtree
+                static void remove_with_replacement(std::unique_ptr<TreeNode>& node_to_remove, std::unique_ptr<TreeNode>& current){
+                    if(current -> left){
+                        remove_with_replacement(node_to_remove, current->left);
+                        current -> height = current->compute_height();
+                        rebalance(current);
+                    }else{
+                        //If "current" has no right element, it becomes null
+                        node_to_remove = std::move(current);
+                        current = std::move(node_to_remove->right);
+                    }
+                }
+
         };
 };
 
