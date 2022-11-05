@@ -1,3 +1,4 @@
 *.out
 EvilHangman/*
 .gitignore
+AoC2021/*input.txt
