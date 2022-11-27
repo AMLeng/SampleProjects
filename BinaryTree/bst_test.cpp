@@ -1,6 +1,7 @@
 #include "binary_search_tree.h"
 #include <string>
 #include <memory>
+#include <vector>
 
 void test_left_rot_add(){
     std::cout << "Test left rotation when adding\n";
@@ -111,8 +112,9 @@ void test_remove(){
     test_one_child_remove();
     test_two_child_remove();
 }
+
 int main(){
-    //test_add();
-    //test_find();
+    test_add();
+    test_find();
     test_remove();
 }
