@@ -1,0 +1,10 @@
+int fib(int n){
+    return n+fib(n-1);
+}
+int main(){
+    int input = ReadInteger();
+    int i;
+    for(i=0; i<input; i = i + 1){
+        Print(fib(i));
+    }
+}

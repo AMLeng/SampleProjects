@@ -1,0 +1,40 @@
+//Stolen from a screenshot on huiEric's decaf compiler repository
+class Animal {
+    int height;
+    double weight;
+    void set_height(int h){
+        height = h;
+    }
+    int get_height(){
+        return height;
+    }
+    void set_weight(double w){
+        weight = w;
+    }
+    int get_weight(){
+        return weight;
+    }
+    void Eat() { weight = weight * 2.0;}
+}
+
+class Cow extends Animal {
+    string name;
+    void set_name(string n){
+        name = n;
+    }
+    int get_name(){
+        return name;
+    }
+    void Moo(){Print(name,"moos.");}
+}
+
+int main(){
+    Cow betsy;
+    betsy = new Cow;
+    betsy.set_height(0xa2); 
+    betsy.set_weight(1.456);
+    betsy.set_name("Betsy");
+    betsy.Moo();
+    Print("Betsy has height",betsy.get_height());
+    Print("Betsy has weight",betsy.get_weight());
+}
