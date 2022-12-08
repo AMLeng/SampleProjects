@@ -4,98 +4,79 @@
 #include <utility>
 #include <cassert>
 
-bool check_visible(std::vector<std::vector<int>> heights, int a, int b){
-    int i = 1;
-    while(i<=a){
-        if(heights[a-i][b] >= heights[a][b]){
-            break;
+class Forest{
+    public:
+        Forest(std::vector<std::vector<int>> h) : heights(h), n(h.size()), m(h.front().size()){}
+        int count_visible(){
+            int sum = 0;
+            for(int i=0; i<n; i++){
+                for(int j=0; j<m; j++){
+                    if(check_visible(i,j)){
+                        sum++;
+                    }
+                }
+            }
+            return sum;
         }
-        i++;
-    }
-    if(i > a){
-        return true;
-    }
-    i = 1;
-    while(i<=b){
-        if(heights[a][b-i] >= heights[a][b]){
-            break;
+        int best_score(){
+            int max = 0;
+            for(int i=0; i<n; i++){
+                for(int j=0; j<m; j++){
+                    int temp = score(i,j);
+                    if(temp > max){
+                        max = temp;
+                    }
+                }
+            }
+            return max;
         }
-        i++;
-    }
-    if(i > b){
-        return true;
-    }
-    i = a+1;
-    while(i<heights.size()){
-        if(heights[i][b] >= heights[a][b]){
-            break;
+    
+        static const std::vector<std::pair<int,int>> directions;
+    private:
+        std::vector<std::vector<int>> heights;
+        int n;
+        int m;
+        bool in_bounds(int a, int b){
+            return a >= 0 && a < n && b >= 0 && b < m;
         }
-        i++;
-    }
-    if(i >= heights.size()){
-        return true;
-    }
-    i = b+1;
-    while(i<heights.front().size()){
-        if(heights[a][i] >= heights[a][b]){
-            break;
+        bool check_visible(int a, int b){
+            for(auto d : directions){
+                bool this_direction = true;
+                int i = a+d.first;
+                int j = b+d.second;
+                while(in_bounds(i,j)){
+                    if(heights.at(i).at(j)>= heights.at(a).at(b)){
+                        this_direction = false;
+                    }
+                    i+= d.first;
+                    j+= d.second;
+                }
+                if(this_direction){return true;}
+            }
+            return false;
         }
-        i++;
-    }
-    if(i >= heights.front().size()){
-        return true;
-    }
-    return false;
-}
+        int score(int a, int b){
+            int prod = 1;
+            for(auto d : directions){
+                int i = a+d.first;
+                int j = b+d.second;
+                int visible_this_direction = 0;
+                while(in_bounds(i,j)){
+                    visible_this_direction++;
+                    if(heights.at(i).at(j)>= heights.at(a).at(b)){
+                        break;
+                    }
+                    i+= d.first;
+                    j+= d.second;
+                }
+                prod *= visible_this_direction;
+            }
+            return prod;
+        }
+};
+const std::vector<std::pair<int,int>> Forest::directions = 
+    std::vector<std::pair<int,int>>{std::make_pair(1,0),std::make_pair(-1,0),std::make_pair(0,1),std::make_pair(0,-1)};
 
-int score(std::vector<std::vector<int>> heights, int a, int b){
-    auto scores = std::vector<int>{1,1,1,1};
-    int i = 1;
-    while(i<=a){
-        if(heights[a-i][b] >= heights[a][b]){
-            break;
-        }
-        scores[0]++;
-        i++;
-    }
-    if(i > a){
-        scores[0]--;
-    }
-    i = 1;
-    while(i<=b){
-        if(heights[a][b-i] >= heights[a][b]){
-            break;
-        }
-        scores[1]++;
-        i++;
-    }
-    if(i > b){
-        scores[1]--;
-    }
-    i = a+1;
-    while(i<heights.size()){
-        if(heights[i][b] >= heights[a][b]){
-            break;
-        }
-        scores[2]++;
-        i++;
-    }
-    if(i >=heights.size()){
-        scores[2]--;
-    }
-    i = b+1;
-    while(i<heights.front().size()){
-        if(heights[a][i] >= heights[a][b]){
-            break;
-        }
-        scores[3]++;
-        i++;
-    }
-    if(i >=heights.front().size()){
-        scores[3]--;
-    }
-    return scores[0]*scores[1]*scores[2]*scores[3];
-}
 int main(){
     std::string nextline;
     auto trees = std::vector<std::vector<int>>();
@@ -108,21 +89,7 @@ int main(){
             trees.back().push_back(c-'0');
         }
     }
-    int n = trees.size();
-    int m =trees.front().size();
-    int sum = 0;
-    int max = 0;
-    for(int i=0; i<n; i++){
-    for(int j=0; j<m; j++){
-        if(check_visible(trees,i,j)){
-            sum++;
-        }
-        int temp = score(trees,i,j);
-        if(temp > max){
-            max = temp;
-        }
-    }
-    }
-    std::cout<<sum<<std::endl;
-    std::cout<<max<<std::endl;
+    auto myforest = Forest(trees);
+    std::cout<<myforest.count_visible()<<std::endl;
+    std::cout<<myforest.best_score()<<std::endl;
 }
