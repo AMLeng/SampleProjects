@@ -1,7 +1,0 @@
-int main(){
-    int i;
-    int this_identifier_is_longer_than_thirty_one_characters_and_thus_should_throw_an_error;
-    this_identifier_is_longer_than_thirty_one_characters_and_thus_should_throw_an_error = 1;
-    i = 2;
-    Print(i + this_identifier_is_longer_than_thirty_one_characters_and_thus_should_throw_an_error);
-}

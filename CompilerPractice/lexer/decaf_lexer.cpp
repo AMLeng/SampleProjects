@@ -44,7 +44,7 @@ struct Lexer::HelperMethods{
 };
 
 //Remains to implement: Int, Double
-//Need tests for operator, string
+//Need tests for operator
 Token Lexer::next_token(){
     Lexer::HelperMethods::ignore_space(*this);
     char c = input_stream.get();
@@ -66,6 +66,7 @@ Token Lexer::next_token(){
             while(n != '*' || input_stream.peek() != '/'){
                 input_stream.get(n);
             }
+            input_stream.get(n); //Get the ending '/' for the comment
             return Token(TokenType::COMMENT);
         }
     }
