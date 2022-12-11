@@ -3,6 +3,7 @@
 #include "token.h"
 #include <sstream>
 #include <stdexcept>
+#include <cassert>
 
 TEST_CASE("recognizes_empty_input_stream"){
     auto ss = std::stringstream("");
@@ -11,6 +12,12 @@ TEST_CASE("recognizes_empty_input_stream"){
 }
 TEST_CASE("recognizes_identifier_not_keyword"){
     auto ss = std::stringstream("this_is_a_identifier");
+    decaf_lexer::Lexer l(ss);
+    REQUIRE(l.next_token().type == token::TokenType::Identifier);
+    REQUIRE(l.next_token().type == token::TokenType::END);
+}
+TEST_CASE("recognizes_identifier_with_digits"){
+    auto ss = std::stringstream("identifier_0");
     decaf_lexer::Lexer l(ss);
     REQUIRE(l.next_token().type == token::TokenType::Identifier);
     REQUIRE(l.next_token().type == token::TokenType::END);
@@ -119,4 +126,71 @@ TEST_CASE("error_incomplete_string"){
     auto ss = std::stringstream("\"This is not a valid string");
     decaf_lexer::Lexer l(ss);
     REQUIRE_THROWS_AS(l.next_token(),std::runtime_error);
+}
+TEST_CASE("recognizes_arithmetic_operators"){
+    auto ss = std::stringstream("1+2\n"
+        "2 * 3\n"
+        "3 /2\n"
+        "4- 2\n"
+        "5% 2\n"
+        "-3"
+    );
+    decaf_lexer::Lexer l(ss);
+    for(int i=0; i<5; i++){
+        REQUIRE(l.next_token().type == token::TokenType::Int);
+        REQUIRE(l.next_token().type == token::TokenType::Operator);
+        REQUIRE(l.next_token().type == token::TokenType::Int);
+    }
+    REQUIRE(l.next_token().type == token::TokenType::Operator);
+    REQUIRE(l.next_token().type == token::TokenType::Int);
+    REQUIRE(l.next_token().type == token::TokenType::END);
+}
+TEST_CASE("recognizes_logical_operators"){
+    auto ss = std::stringstream("true && true\n"
+        " true || false\n"
+        "!true"
+    );
+    decaf_lexer::Lexer l(ss);
+    for(int i=0; i<2; i++){
+        REQUIRE(l.next_token().type == token::TokenType::Bool);
+        REQUIRE(l.next_token().type == token::TokenType::Operator);
+        REQUIRE(l.next_token().type == token::TokenType::Bool);
+    }
+    REQUIRE(l.next_token().type == token::TokenType::Operator);
+    REQUIRE(l.next_token().type == token::TokenType::Bool);
+    REQUIRE(l.next_token().type == token::TokenType::END);
+}
+TEST_CASE("recognizes_comparison_operators"){
+    auto ss = std::stringstream("1<3 \n"
+        " 2 >6\n"
+        "3 == 6 \n"
+        "4 <= 6 \n"
+        "5 >= 6 \n"
+        "6 != 6 \n"
+    );
+    decaf_lexer::Lexer l(ss);
+    for(int i=0; i<6; i++){
+        REQUIRE(l.next_token().type == token::TokenType::Int);
+        REQUIRE(l.next_token().type == token::TokenType::Operator);
+        REQUIRE(l.next_token().type == token::TokenType::Int);
+    }
+    REQUIRE(l.next_token().type == token::TokenType::END);
+}
+TEST_CASE("recognizes_assignment_operator"){
+    auto ss = std::stringstream("test_obj = true");
+    decaf_lexer::Lexer l(ss);
+    REQUIRE(l.next_token().type == token::TokenType::Identifier);
+    REQUIRE(l.next_token().type == token::TokenType::Operator);
+    REQUIRE(l.next_token().type == token::TokenType::Bool);
+    REQUIRE(l.next_token().type == token::TokenType::END);
+}
+TEST_CASE("error_unpaired_and_or"){
+    auto ss = std::stringstream("true&false false|true");
+    decaf_lexer::Lexer l(ss);
+    for(int i=0; i<2; i++){
+        REQUIRE(l.next_token().type == token::TokenType::Bool);
+        REQUIRE_THROWS_AS(l.next_token(),std::runtime_error);
+        REQUIRE(l.next_token().type == token::TokenType::Bool);
+    }
+    REQUIRE(l.next_token().type == token::TokenType::END);
 }
