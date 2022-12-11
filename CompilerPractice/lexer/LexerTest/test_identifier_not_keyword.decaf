@@ -1,0 +1,10 @@
+int main(){
+    int i;
+    int this_is_a_identifier;
+    bool bool_var;
+    this_is_a_identifier = 1;
+    i = 2;
+    bool_var = true;
+    Print(i + this_is_a_identifier);
+    Print(bool_var);
+}

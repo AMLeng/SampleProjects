@@ -1,0 +1,50 @@
+//Stolen from a screenshot on huiEric's decaf compiler repository
+class Animal {
+    int height;
+    double weight;
+    void set_height(int h){
+        height = h;
+    }
+    int get_height(){
+        return height;
+    }
+    void set_weight(double w){
+        weight = w;
+    }
+    int get_weight(){
+        return weight;
+    }
+    void Eat() { weight = weight * 2.0;}
+}
+
+class Cow extends Animal {
+    string name;
+    void set_name(string n){
+        name = n;
+    }
+    int get_name(){
+        return name;
+    }
+    void Moo(){Print(name," moos.");}
+}
+
+int main(){
+    Cow[] cows;
+    cows = NewArray(3, Cow);
+    cows[0].set_name("Abby");
+    cows[1].set_name("Betsy");
+    cows[2].set_name("Carly");
+
+    cows[0].set_height(0X12aE);
+    cows[1].set_height(0xa2); 
+    cows[2].set_height(00035);
+
+    cows[0].set_weight(12.);
+    cows[1].set_weight(1.456);
+    cows[2].set_weight(3.E+02);
+    for(int i=0;i<3;i++){
+        cows[i].Moo();
+        Print(cows[i].get_name()," has height ",cows[i].get_height());
+        Print(cows[i].get_name()," has weight ",cows[i].get_weight());
+    }
+}

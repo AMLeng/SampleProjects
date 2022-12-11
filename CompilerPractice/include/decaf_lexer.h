@@ -10,7 +10,7 @@ class Lexer{
         token::Token next_token();
         void print_tokens(){
             for(token::Token next = next_token(); next.type != token::TokenType::END; next = next_token()){
-                std::cout<<next.to_string()<<std::endl;
+                std::cout<<next.to_string();
             }
             std::cout<<token::Token(token::TokenType::END, "").to_string()<<std::endl;
         }
