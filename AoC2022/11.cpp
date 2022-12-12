@@ -4,11 +4,10 @@
 #include <vector>
 #include <deque>
 
-long LCM = 1;
+
 class Monkey{
     public:
-        Monkey(std::deque<long> starting, int n, bool operation, int test, int target1, int target2, bool s) :
-            items(starting), operation_is_add(operation), factor_for_operation(n), test_num(test), t1(target1), t2(target2), inspected(0), special(s) {}
+        Monkey() = default;
         void receive(long item){
             items.push_back(item);
         }
@@ -24,16 +23,12 @@ class Monkey{
                 }
             }
         }
-        void print(){
-            for(long i : items){
-                std::cout<< i<<',';
-            }
-            std::cout<<std::endl;
-        }
         long get_inspected(){
             return inspected;
         }
+        friend Monkey create_monkey(std::vector<std::string> input);
     private:
+        static long LCM;
         int t1;
         int t2;
         bool check_throw(long item){
@@ -69,6 +64,29 @@ class Monkey{
         bool special;
 
 };
+long Monkey::LCM = 1;
+
+Monkey create_monkey(std::vector<std::string> input){
+    auto m = Monkey();
+    std::string current = input[1];
+    m.items.push_back(std::stoi(current.substr(current.find(':')+1)));
+    while(current.find(',') < current.size()-1){
+        current = current.substr(current.find(',')+1);
+        m.items.push_back(std::stoi(current));
+    }
+    m.operation_is_add = (input[2][23] == '+');
+    if(input[2][25] == 'o'){
+        m.special = true;
+    }else{
+        m.factor_for_operation = std::stoi(input[2].substr(25));
+    }
+    m.test_num = std::stoi(input[3].substr(21));
+    Monkey::LCM *= m.test_num;
+    m.t1 = std::stoi(input[4].substr(29));
+    m.t2 = std::stoi(input[5].substr(30));
+    return m;
+}
+
 long monkey_bis(std::vector<Monkey>& monkeys){
     long max = 0;
     long max2=0;
@@ -84,37 +102,18 @@ long monkey_bis(std::vector<Monkey>& monkeys){
     }
     return max*max2;
 }
+
+
 int main(){
     std::string nextline;
     auto monkeys = std::vector<Monkey>();
     while(std::getline(std::cin,nextline)){
-        assert(nextline[0] == 'M');
-        assert(monkeys.size() == std::stoi(nextline.substr(7)));
-        auto init_items = std::deque<long>();
-        std::getline(std::cin,nextline);
-        init_items.push_back(std::stoi(nextline.substr(nextline.find(':')+1)));
-        while(nextline.find(',') < nextline.size()-1){
-            nextline = nextline.substr(nextline.find(',')+1);
-            init_items.push_back(std::stoi(nextline));
+        auto input = std::vector<std::string>();
+        for(int i=0; i<6; i++){
+            input.push_back(nextline);
+            std::getline(std::cin,nextline);
         }
-        std::getline(std::cin,nextline);
-        bool o = (nextline[23] == '+');
-        int f = 0;
-        bool special = false;
-        if(nextline[25] == 'o'){
-            special = true;
-        }else{
-            f = std::stoi(nextline.substr(25));
-        }
-        std::getline(std::cin,nextline);
-        int t = std::stoi(nextline.substr(21));
-        LCM *= t;
-        std::getline(std::cin,nextline);
-        int t1 = std::stoi(nextline.substr(29));
-        std::getline(std::cin,nextline);
-        int t2 = std::stoi(nextline.substr(30));
-        monkeys.emplace_back(init_items,f,o,t,t1,t2, special);
-        std::getline(std::cin,nextline);
+        monkeys.push_back(create_monkey(input));
     }
     //for(int i=0; i<20; i++){
     for(int i=0; i<10000; i++){
