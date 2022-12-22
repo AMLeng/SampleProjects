@@ -1,9 +1,11 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <array>
 #include <utility>
 #include <cassert>
-
+#include <map>
+#include <iterator>
 
 int abs(int x){
     if (x>=0){
@@ -18,142 +20,150 @@ int dist(int x1, int y1, int x2, int y2){
 
 typedef std::pair<int,int> Range;
 
-class Sensor{
-    public:
-        Sensor(std::string line){
-            x = std::stoi(line.substr(line.find("x=")+2));
-            y = std::stoi(line.substr(line.find("y=")+2));
-            line = line.substr(line.find(":"));
-            bx = std::stoi(line.substr(line.find("x=")+2));
-            by = std::stoi(line.substr(line.find("y=")+2));
-            r = dist(x,y,bx,by);
-        }
-        bool covers(int a, int b){
-            return dist(x,y,a,b) <= r;
-        }
-        Range get_range(int y_coord){
-            int remainder = r - abs(y_coord-y);
-            if(remainder < 0){
-                return std::make_pair(0,-1);
-            }else{
-                return std::make_pair(x-remainder,x+remainder);
-            }
-        }
-
-        int r;
-    private:
-        int x;
-        int y;
-        int bx;
-        int by;
+struct Sensor{
+    Sensor(std::string line){
+        x = std::stoi(line.substr(line.find("x=")+2));
+        y = std::stoi(line.substr(line.find("y=")+2));
+        line = line.substr(line.find(":"));
+        int bx = std::stoi(line.substr(line.find("x=")+2));
+        int by = std::stoi(line.substr(line.find("y=")+2));
+        r = dist(x,y,bx,by);
+    }
+    int r;
+    int x;
+    int y;
 };
+int count_nobeacon(const std::vector<Sensor>& sensors, const int linenum){
+    auto intervals = std::map<int,int>();
 
-class Ranges{
-    public:
-        Ranges() : ranges() , upper(0){}
-        Ranges(int bound) : ranges() , upper(bound){}
-        void add(Range r){
-            if(upper != 0){
-                if(r.first < 0){
-                    r.first = 0;
-                }
-                if(r.second > upper){
-                    r.second = upper;
-                }
-            }
-            if(r.first > r.second){return;}
-            for(auto& x : ranges){
-                resolve_intersection(x,r);
-                if(r.first > r.second){return;}
-            }
-            ranges.push_back(r);
+    for(const auto& s : sensors){
+        int remainder = s.r - abs(linenum-s.y);
+        if(remainder < 0){
+            continue;
         }
-        int count(){
-            int sum = 0;
-            for(auto& x : ranges){
-                sum += x.second-x.first + 1;
-            }
-            return sum;
-        }
-        void print(){
-            for(auto& x : ranges){
-                std::cout<<x.first<<','<<x.second<<"; ";
-            }
-            std::cout<<std::endl;
-        }
-    private:
-        const int upper;
-        std::vector<Range> ranges;
-        void resolve_intersection(const Range x, Range& y){
-            assert(x.first <= x.second);
-            if(y.first > x.second || y.second < x.first){
-                return;
-            }
-            if(y.first >=x.first && y.second <= x.second){
-                y = std::make_pair(0,-1);
-                return;
-            }
-            if(y.first <=x.first && y.second >= x.second){
-                add(std::make_pair(y.first, x.first-1));
-                y.first = x.second + 1;
-                return;
-            }
-            if(y.first <= x.first && y.second < x.second){
-                y.second = x.first-1;
-                return;
-            }
-            if(y.first > x.first && y.second >= x.second){
-                y.first = x.second+1;
-                return;
+        auto r = std::make_pair(s.x-remainder,s.x+remainder);
+        auto ret = intervals.insert(r);
+        if(ret.second == false){
+            if(intervals.at(r.first)< r.second){
+                intervals.at(r.first)= r.second;
             }
         }
-};
+    }
+    {
+        auto it = intervals.begin();
+        auto next = std::next(it,1);
+        for(; next != intervals.end() && it != intervals.end(); it++, next = std::next(it,1)){
+            assert(it->second>= it->first);
+            while(next != intervals.end() && next->second <= it->second){
+                next = intervals.erase(next);
+            }
+            if(next != intervals.end() && next->first <= it->second){
+                it->second = next->first - 1;
+            }
+        }
+    }
+    int sum = 0;
+    for(auto i : intervals){
+        sum += i.second - i.first + 1;
+    }
+    return sum;
+}
 
+long long check_covered(const std::vector<Sensor>& sensors, int& linenum, int bound){
+    auto intervals = std::map<int,std::pair<int,int>>();
+    long long leewayleft = 0;
+    long long leeway = 0;
+    for(const auto& s : sensors){
+        int remainder = s.r - abs(linenum-s.y);
+        if(remainder < 0){
+            continue;
+        }
+        auto r = std::make_pair(s.x-remainder,std::make_pair(s.x+remainder,s.y));
+        long long x = r.second.first - bound;
+        if(x > 0){
+            r.second.first = bound;
+            if(x > leeway){
+                leeway= x;
+            }
+        }
+        if(r.first < 0){
+            if(-r.first > leewayleft){
+                leewayleft = -r.first;
+            }
+            r.first = 0;
+        }
+        auto ret = intervals.insert(r);
+        if(ret.second == false){
+            if(intervals.at(r.first).first < r.second.first){
+                intervals.at(r.first).first = r.second.first;
+            }
+        }
+    }
+    if(leeway > leewayleft){
+        leeway = leewayleft;
+        assert(leeway >= 0);
+    } 
+    {
+        auto it = intervals.begin();
+        auto next = std::next(it,1);
+        for(; next != intervals.end() && it != intervals.end(); it = next, next = std::next(it,1)){
+            assert(it->second.first >= it->first);
+            while(next != intervals.end() && (next->second.first <= it->second.first)){
+                next = intervals.erase(next);
+            }
+            if(next != intervals.end()){
+                long long overlap = (it->second.first - next->first)/2;
+                if(overlap < 0){
+                    long long i=0;
+                    for(auto r : intervals){
+                        if(i>= r.first && i < r.second.first){
+                            i = r.second.first+1;
+                        }
+                    }
+                    return i*4000000+linenum;
+                }
+                long long forward = next->second.second - linenum;
+                {
+                    long long temp = it->second.second - linenum;
+                    if((temp > 0 && temp  < forward) || forward < 0){
+                        forward = temp;
+                    }
+                }
+                if(forward > overlap){
+                    overlap = forward;
+                }
+                if(overlap < leeway){
+                    leeway = overlap;
+                }
+            }
+        }
+    }
+    assert(leeway >= 0);
+    linenum += leeway;
+    return 0;
+}
 int main(){
-    const int YVAL = 2000000;
-    const int BEACONS_IN_ROW = 1;
-    const int MAX = 4000000;
-    //const int MAX = 20;
     std::string line;
     auto sensors = std::vector<Sensor>();
     while(std::getline(std::cin,line)){
         sensors.emplace_back(line);
     }
+
+    //Part 1
+    const int YVAL = 2000000;
+    const int BEACONS_IN_ROW = 1;
+    std::cout<<"Part 1: "<<count_nobeacon(sensors,YVAL)-BEACONS_IN_ROW<<std::endl;
+
+    const int MAX = 4000000;
     int j=0;
     for(; j<MAX; j++){
-        auto ranges = Ranges(MAX);
-        for(auto s : sensors){
-            ranges.add(s.get_range(j));
-        }
-        if(ranges.count() < MAX + 1){
-            assert(ranges.count() == MAX);
+        long long x = check_covered(sensors,j,MAX);
+        if(x != 0){
+            std::cout<<"Part 2: "<<x<<std::endl;
             break;
         }
     }
-    std::cout<<"Row "<<j<<std::endl;
-    /*auto ranges = Ranges();
-    for(auto s : sensors){
-        auto t = s.get_range(YVAL);
-        if(t.first <= t.second){
-            ranges.add(s.get_range(YVAL));
-        }
-    }
-    std::cout<<ranges.count()- BEACONS_IN_ROW<<std::endl;
-    ranges.print();*/
 
-    bool seen;
-    for(int i=0; i< MAX; i++){
-        seen = true;
-        for(auto s : sensors){
-            if(s.covers(i,j)){
-                seen = false;
-                break;
-            }
-        }
-        if(seen){
-            std::cout<<i<<','<<j<<std::endl;
-            std::cout<<static_cast<long long>(i)*4000000+j<<std::endl;
-            return 0;
-        }
-    }
 }
+
+
