@@ -151,7 +151,7 @@ Token Lexer::next_token(){
             input_stream.get();
             return Token(TokenType::Operator, std::string(c,2));
         }else{
-            throw std::runtime_error("Invalid syntax while reading operator beginning with \'" + std::string(c,1) + "\'. Did you mean "+std::string(c,2)+"?");
+            throw std::runtime_error("Invalid syntax while reading operator starting with \'" + std::string(c,1) + "\'. Did you mean "+std::string(c,2)+"?");
         }
     }
     if(c == '<' || c == '=' || c == '>' || c == '!'){
@@ -163,6 +163,8 @@ Token Lexer::next_token(){
         }
         return Token(TokenType::Operator, token_value);
     }
+
+    //Handle ints and doubles
     if(std::isdigit(c)){
         std::string token_value = std::string(1,c);
         if(c == '0' && (input_stream.peek() == 'x' || input_stream.peek() == 'X')){
@@ -200,7 +202,6 @@ Token Lexer::next_token(){
         return Token(TokenType::Double, token_value);
     }
 
-    //Handle ints
     throw std::logic_error("Unknown Symbol at character with int value " + std::to_string(static_cast<int>(c)));
 };
 

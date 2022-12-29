@@ -18,6 +18,9 @@ struct Grammar{
     bool has_type(std::string type){
         return types.count(type) == 1;
     }
+    std::vector<std::string> der(std::string left, int i){
+        return derivations.at(left).at(i);
+    }
     std::map<std::string,std::vector<std::vector<std::string>>> derivations;
     std::set<std::string> types;
 };

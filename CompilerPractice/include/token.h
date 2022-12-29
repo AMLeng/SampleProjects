@@ -3,8 +3,9 @@
 #include <utility>
 #include <string>
 namespace token{
+    //Tokens for the Lexer
 enum class TokenType{Keyword, Identifier, Operator, Bool, Int, Double, String, 
-            LParen, RParen, LBrack, RBrack, LBrace, RBrace, Semicolon, Period, Comma, COMMENT, END, ERR};
+            LParen, RParen, LBrack, RBrack, LBrace, RBrace, Semicolon, Period, Comma, COMMENT, END};
 struct Token{
     Token(TokenType t, std::string v) : type(t), value(v){}
     Token(TokenType t, char c) : type(t), value(std::string(1,c)){}
@@ -40,9 +41,6 @@ struct Token{
                 break;
             case TokenType::COMMENT:
                 output = "Comment here\n";
-                break;
-            case TokenType::ERR:
-                output = "Error on: " + value + " ";
                 break;
             case TokenType::Semicolon:
                 output = ";\n";
