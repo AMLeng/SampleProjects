@@ -8,6 +8,7 @@ struct Grammar{
     Grammar(std::map<std::string,std::vector<std::vector<std::string>>> map) : derivations(map), types(){
         for(auto pair : derivations){
             types.insert(pair.first);
+            nonterminals.insert(pair.first);
             for(auto derivation : pair.second){
                 for(auto term : derivation){
                     types.insert(term);
@@ -15,14 +16,16 @@ struct Grammar{
             }
         }
     }
-    bool has_type(std::string type){
+    bool has_type(std::string type) const{
         return types.count(type) == 1;
     }
-    std::vector<std::string> der(std::string left, int i){
-        return derivations.at(left).at(i);
+    std::vector<std::vector<std::string>> der(std::string left) const{
+        return derivations.at(left);
     }
-    std::map<std::string,std::vector<std::vector<std::string>>> derivations;
     std::set<std::string> types;
+    std::set<std::string> nonterminals;
+    //private:
+    std::map<std::string,std::vector<std::vector<std::string>>> derivations;
 };
 auto decaf_grammar = Grammar(std::map<std::string,std::vector<std::vector<std::string>>>{{
     //Insert grammar rules for decaf here
