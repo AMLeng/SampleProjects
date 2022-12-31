@@ -130,15 +130,52 @@ class ItemSet{
 template <const grammar::Grammar* g>
 class FSM{
     public:
-    FSM() : transitions(generate_item_sets().second), item_sets(generate_item_sets().first) {
+    FSM() : internals(generate_item_sets()) {
     }
     FSM(FSM&) = delete;
     FSM(FSM&&) = delete;
-    //const ItemSet<g>* eval(ItemSet<g> start_state, SOME ITERATOR NONSENSE)
-    const std::set<std::unique_ptr<const ItemSet<g>>> item_sets;
-    const std::map<const ItemSet<g>*,std::map<Type,const ItemSet<g>*>> transitions;
+    int state_count(){
+        return internals.first.size();
+    }
+    template <typename TypeIterator>
+    const ItemSet<g>* eval(ItemSet<g> start_state, TypeIterator start, TypeIterator end){
+        const ItemSet<g>* current = nullptr;
+        for(auto& p : internals.first){
+            if(*p == start_state){
+                current = p.get();
+                break;
+            }
+        }
+        if(!current){
+            return nullptr;//Initial state was not in the FSM
+        }
+        for(auto it = start; it != end; it++){
+            current = transition(current, *it);
+        }
+        return current;
+    }
+    //The below assumes that the start_pointer is already one of the pointers managed by the unique_ptr in
+    //the set internals.first
+    template <typename TypeIterator>
+    const ItemSet<g>* eval(const ItemSet<g>* start_pointer, TypeIterator start, TypeIterator end){
+        for(auto it = start; it != end; it++){
+            start_pointer = transition(start_pointer, *it);
+        }
+        return start_pointer;
+    }
     private:
-    //const ItemSet<g>* transition(const ItemSet<g>* start, Type next_type) const{}
+    //Pair of the set of items and the map for transitions
+    const std::pair<std::set<std::unique_ptr<const ItemSet<g>>>,std::map<const ItemSet<g>*,std::map<Type,const ItemSet<g>*>>> internals;
+
+    const ItemSet<g>* transition(const ItemSet<g>* start, Type next_type) const{
+        assert(internals.second.find(start) != internals.second.end());
+        if(internals.second.at(start).find(next_type) == internals.second.at(start).end()){
+            return nullptr;
+        }else{
+            return internals.second.at(start).at(next_type);
+        }
+    }
+
     static auto generate_item_sets(){
         auto return_set = std::set<std::unique_ptr<const ItemSet<g>>>();
         auto transition_map = std::map<const ItemSet<g>*,std::map<Type,const ItemSet<g>*>>();

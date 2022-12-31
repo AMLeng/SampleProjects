@@ -99,8 +99,19 @@ TEST_CASE("itemset_shift"){
     }
 }
 
-TEST_CASE("fsm_generation_method"){
+TEST_CASE("fsm_generation_correct_size"){
     //See figure 4.31 on page 244 of the Dragon Book for the complete FSM
     fsm::FSM<&g0> my_fsm{};
-    REQUIRE(my_fsm.item_sets.size() == 12);
+    REQUIRE(my_fsm.state_count() == 12);
+}
+TEST_CASE("fsm_transitions"){
+    //See figure 4.31 on page 244 of the Dragon Book for the complete FSM
+    fsm::FSM<&g0> my_fsm{};
+    fsm::ItemSet<&g0> init = fsm::ItemSet<&g0>(std::set<fsm::Item<&g0>>{fsm::Item<&g0>("Start",g0.der("Start").at(0))});
+    fsm::ItemSet<&g0> end = fsm::ItemSet<&g0>(std::set<fsm::Item<&g0>>{fsm::Item<&g0>("F",{{"(","E",")"}}).shift().shift().shift()});
+    std::vector<fsm::Type> symbols = {{"(","T","*","(","E",")"}};
+    auto current_pointer = my_fsm.eval(init,symbols.begin(),symbols.end());
+    REQUIRE(*current_pointer == end);
+    std::vector<fsm::Type> symbols2 = {{")"}};
+    REQUIRE(my_fsm.eval(current_pointer,symbols2.begin(),symbols2.end()) == nullptr);
 }
