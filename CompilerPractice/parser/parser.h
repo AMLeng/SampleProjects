@@ -1,5 +1,5 @@
-#ifndef _FSM_
-#define _FSM_
+#ifndef _PARSER
+#define _PARSER_
 #include <iostream>
 #include <cassert>
 #include <deque>
@@ -10,23 +10,30 @@
 #include <algorithm>
 #include <memory>
 #include "grammar.h"
-namespace fsm{
+namespace parser{
 
 typedef std::string Type;
 template <const grammar::Grammar* g>
 class ItemSet;
 template <const grammar::Grammar* g>
-class Item{
+class Item{//Represents an LR(0) item
     friend ItemSet<g>;
     public:
     Item(Type lhs, std::vector<Type> rhs) : left(lhs), right(rhs), position(0) {
-        }
-    bool next(Type input) const{
-        return position < right.size() && right.at(position) == input;
+        skip_epsilon();
+    }
+    Type next() const{
+        assert(!at_end());
+        return right.at(position);
+    }
+    bool at_end() const{
+        return position == right.size();
     }
     Item<g> shift() const{
+        assert(!at_end());
         auto copy = Item(*this);
         copy.position++;
+        copy.skip_epsilon();
         return copy;
     }
     bool operator<(const Item<g>& rhs) const{
@@ -60,11 +67,17 @@ class Item{
     Type left;
     std::vector<Type> right;
     int position;
+    void skip_epsilon(){
+        while(!at_end() && next() == "Epsilon"){
+            position++;
+        }
+    }
 };
+
 template <const grammar::Grammar* g>
-class ItemSet{
+class ItemSet{//Represents a set of LR(1) items---in particular stores lookaheads!
     public:
-    ItemSet(std::set<Item<g>> kernel) : items(kernel){
+    ItemSet(std::set<Item<g>> kernel) : items(generate_lookaheads(kernel)){
         this->closure();
     }
     bool operator<(const ItemSet<g>& rhs) const{
@@ -73,11 +86,16 @@ class ItemSet{
     bool operator==(const ItemSet<g>& rhs) const{
         return !(*this < rhs) && !(rhs < *this);
     }
+    //Codewise is simple to do but there are actually two (or three) things going on here
+    //We take a LALR(1) item set, forget the lookaheads (by only looking at the first element of the pairs in the map)
+    //And then, for each item, shift
+    //This thus produces a LR(0) kernel
+    //Which the constructor turns into the corresponding closed LALR(1) item set
     ItemSet<g> shift(Type next_type) const{
         auto items = std::set<Item<g>>();
-        for(const auto& prev_item : this->items){
-            if(prev_item.next(next_type)){
-                items.insert(prev_item.shift());
+        for(const auto& prev_item_pair : this->items){
+            if(prev_item_pair.first.is_next(next_type)){
+                items.insert(prev_item_pair.first.shift());
             }
         }
         return ItemSet<g>(items);
@@ -92,8 +110,37 @@ class ItemSet{
         return items.size();
     }
     private:
-    std::set<Item<g>> items;
+    std::map<Item<g>,std::set<Type>> items;
+    //Need to define this
+    static std::map<Item<g>, std::set<Type>> generate_lookaheads(std::set<Item<g>> items){
+        auto item_map = std::map<Item<g>,std::set<Type>>();
+        for(auto i : items){
+            item_map.emplace(i,std::set<Type>());
+        }
+        return item_map;
+    }
+    //Need to update this for LR(1) itemsets
     void closure(){
+        /*auto already_seen = std::set<Item<g>>();
+        while(already_seen.size() != items.size()){
+            for(auto pair : items){
+                Item<g> i = pair.first;
+                std::set<Type> previous_lookaheads = pair.second;
+                if(already_seen.find(i) == already_seen.end()){
+                    if(i.at_end()){
+                        already_seen.insert(i);
+                    }else{
+                        auto next_type = i.right.at(i.position);
+                        auto lookaheads = std::set<Item<g>>();
+                        if(i.position + 1 == i.right.size()){
+                            lookaheads = std::set<Item<g>>(previous_lookaheads);
+                        }
+                    }
+                }
+            }
+        }
+
+
         auto added = std::map<Type,bool>();
         auto to_add = std::map<Type,bool>();
         for(auto pair : g->derivations){
@@ -121,19 +168,19 @@ class ItemSet{
                     added.at(pair.first) = true;
                 }
             }
-        }
+        }*/
 
     }
 };
 
-
+/*
 template <const grammar::Grammar* g>
-class FSM{
+class Parser{
     public:
-    FSM() : internals(generate_item_sets()) {
+    Parser() : internals(generate_item_sets()) {
     }
-    FSM(FSM&) = delete;
-    FSM(FSM&&) = delete;
+    Parser(Parser&) = delete;
+    Parser(Parser&&) = delete;
     int state_count(){
         return internals.first.size();
     }
@@ -147,7 +194,7 @@ class FSM{
             }
         }
         if(!current){
-            return nullptr;//Initial state was not in the FSM
+            return nullptr;//Initial state was not in the Parser
         }
         for(auto it = start; it != end; it++){
             current = transition(current, *it);
@@ -218,6 +265,6 @@ class FSM{
         }
         return std::make_pair(std::move(return_set),std::move(transition_map));
     }
-};
-} //namespace fsm
-#endif //_FSM_
+};*/
+} //namespace parser
+#endif //_PARSER_
