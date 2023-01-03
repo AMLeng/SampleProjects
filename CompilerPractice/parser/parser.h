@@ -20,7 +20,6 @@ class Item{//Represents an LR(0) item
     friend ItemSet<g>;
     public:
     Item(Type lhs, std::vector<Type> rhs) : left(lhs), right(rhs), position(0) {
-        skip_epsilon();
     }
     Type next() const{
         assert(!at_end());
@@ -33,7 +32,6 @@ class Item{//Represents an LR(0) item
         assert(!at_end());
         auto copy = Item(*this);
         copy.position++;
-        copy.skip_epsilon();
         return copy;
     }
     bool operator<(const Item<g>& rhs) const{
@@ -67,11 +65,6 @@ class Item{//Represents an LR(0) item
     Type left;
     std::vector<Type> right;
     int position;
-    void skip_epsilon(){
-        while(!at_end() && next() == "Epsilon"){
-            position++;
-        }
-    }
 };
 
 template <const grammar::Grammar* g>
@@ -94,7 +87,7 @@ class ItemSet{//Represents a set of LR(1) items---in particular stores lookahead
     ItemSet<g> shift(Type next_type) const{
         auto items = std::set<Item<g>>();
         for(const auto& prev_item_pair : this->items){
-            if(prev_item_pair.first.is_next(next_type)){
+            if(!prev_item_pair.first.at_end() && prev_item_pair.first.next()==next_type){
                 items.insert(prev_item_pair.first.shift());
             }
         }
@@ -121,55 +114,41 @@ class ItemSet{//Represents a set of LR(1) items---in particular stores lookahead
     }
     //Need to update this for LR(1) itemsets
     void closure(){
-        /*auto already_seen = std::set<Item<g>>();
+        auto already_seen = std::set<Item<g>>();
         while(already_seen.size() != items.size()){
             for(auto pair : items){
                 Item<g> i = pair.first;
                 std::set<Type> previous_lookaheads = pair.second;
                 if(already_seen.find(i) == already_seen.end()){
-                    if(i.at_end()){
-                        already_seen.insert(i);
-                    }else{
+                    already_seen.insert(i);
+                    if(!i.at_end()){
                         auto next_type = i.right.at(i.position);
-                        auto lookaheads = std::set<Item<g>>();
-                        if(i.position + 1 == i.right.size()){
-                            lookaheads = std::set<Item<g>>(previous_lookaheads);
+                        //Compute the possible lookaheads;
+                        //Importantly, note that the lookaheads are the same
+                        //for every derivation of next_type
+                        auto lookaheads = std::set<Type>();
+                        int index = i.position+1;
+                        for(; index < i.right.size(); index++){
+                            for(auto t : g->first_set(i.right.at(index))){
+                                lookaheads.emplace(t);
+                            }
+                            if(!g->produces_epsilon(i.right.at(index))){
+                                break;
+                            }
+                        }
+                        if(index == i.right.size()){
+                            for(auto t : previous_lookaheads){
+                                lookaheads.emplace(t);
+                            }
+                        }
+                        //Add in each possible derivation
+                        for(auto derivation : g->der(next_type)){
+                            items.emplace(Item<g>(next_type,derivation),lookaheads);
                         }
                     }
                 }
             }
         }
-
-
-        auto added = std::map<Type,bool>();
-        auto to_add = std::map<Type,bool>();
-        for(auto pair : g->derivations){
-            added.emplace(pair.first,false);
-            to_add.emplace(pair.first,false);
-        }
-        for(Item<g> i : items){
-            if(i.position < i.right.size()){
-                auto next_type = i.right.at(i.position);
-                if(to_add.find(next_type) != to_add.end()){
-                    to_add.at(next_type) = true;
-                }
-            }
-        }
-        while(added != to_add){
-            for(auto pair : to_add){
-                if(pair.second && !added.at(pair.first)){
-                    for(auto new_derivation : g->derivations.at(pair.first)){
-                        items.emplace(pair.first,new_derivation);
-                        auto possible_next = new_derivation.at(0);
-                        if(to_add.find(possible_next) != to_add.end()){
-                            to_add.at(possible_next) = true;
-                        }
-                    }
-                    added.at(pair.first) = true;
-                }
-            }
-        }*/
-
     }
 };
 

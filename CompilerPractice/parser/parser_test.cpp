@@ -121,10 +121,8 @@ TEST_CASE("item_operations"){
     REQUIRE(item.at_end());
 }
 
-
-//TEST_CASE("first_set"){
-
-/*TEST_CASE("computes_closure_of_single_element"){
+//Only uses the LR(0) structure (and sometimes technically not even that)
+TEST_CASE("computes_closure_of_single_element"){
     parser::ItemSet<&g0> init = parser::ItemSet<&g0>(std::set<parser::Item<&g0>>{parser::Item<&g0>("Start",g0.der("Start").at(0))});
     REQUIRE(init.size() == 7);
 }
@@ -173,6 +171,7 @@ TEST_CASE("itemset_less"){
         });
     REQUIRE(((init1 < init2) || (init2 < init1)));
 }
+
 TEST_CASE("itemset_shift"){
     //See figure 4.31 on page 244 of the Dragon Book for the sizes of the sets
     //We test, in order, states 1,6,9,7,10
@@ -193,6 +192,8 @@ TEST_CASE("itemset_shift"){
     REQUIRE(dead_end == dead_end_test);
     }
 }
+
+/*
 TEST_CASE("parser_generation_correct_size"){
     //See figure 4.31 on page 244 of the Dragon Book for the complete Parser
     parser::Parser<&g0> my_parser{};
