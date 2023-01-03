@@ -28,10 +28,17 @@ auto g2 = grammar::Grammar(std::map<parser::Type,std::vector<std::vector<parser:
         {"A",{{}}},
         {"B",{{"b"}}},
 }});
+//Actually part of the decaf grammar, with multiple empty productions
 auto g3 = grammar::Grammar(std::map<parser::Type,std::vector<std::vector<parser::Type>>>{{
     {"StmtBlock",{{"VariableDecls", "Stmts"}}},
     {"VariableDecls",{{},{"VariableDecl","VariableDecls"}}},
     {"Stmts",{{},{"Stmt","Stmts"}}},
+}});
+//Highly recursive
+auto g4 = grammar::Grammar(std::map<parser::Type,std::vector<std::vector<parser::Type>>>{{
+    {"A",{{},{"B", "C"}}},
+    {"B",{{},{"A","a"}}},
+    {"C",{{"b"},{"B","c"}}},
 }});
 
 //Test grammar
@@ -63,6 +70,34 @@ TEST_CASE("produces_epsilon"){
     REQUIRE(g3.produces_epsilon("VariableDecls"));
     REQUIRE(g3.produces_epsilon("Stmts"));
     REQUIRE(g3.produces_epsilon("StmtBlock"));
+    REQUIRE(g4.produces_epsilon("A"));
+    REQUIRE(g4.produces_epsilon("B"));
+    REQUIRE(!g4.produces_epsilon("C"));
+}
+TEST_CASE("first_sets_consist_of_terminals"){
+    for(auto type : g0.types){
+        for(auto t : g0.first_set(type)){
+            REQUIRE(g0.is_terminal(t));
+        }
+    }
+    for(auto type : g3.types){
+        for(auto t : g3.first_set(type)){
+            REQUIRE(g3.is_terminal(t));
+        }
+    }
+    for(auto type : g4.types){
+        for(auto t : g4.first_set(type)){
+            REQUIRE(g4.is_terminal(t));
+        }
+    }
+}
+TEST_CASE("first_sets"){
+    REQUIRE(g2.first_set("S") == std::set<std::string>{"b"});
+    REQUIRE(g2.first_set("A").size() == 0);
+    auto correct_set = std::set<std::string>{"a","b","c"};
+    REQUIRE(g4.first_set("A") == correct_set);
+    REQUIRE(g4.first_set("B") == correct_set);
+    REQUIRE(g4.first_set("C") == correct_set);
 }
 
 //Test item class
