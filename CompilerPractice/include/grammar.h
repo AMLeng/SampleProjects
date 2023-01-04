@@ -5,6 +5,9 @@
 #include <set>
 #include <map>
 //Special symbols:
+//"Start" for start symbol
+//"$" for end of input symbol (should only appear in lookaheads)
+//"#" for not-in-grammar placeholder lookahead symbol (should not appear in grammar)
 //Empty symbol (Epsilon) is not represented; e.g. the derivation "A -> Epsilon" would be
 //{{A},{}}
 namespace grammar{
@@ -17,7 +20,7 @@ struct Grammar{
         compute_first_sets();
     }
     bool is_terminal(std::string type) const{
-        return derivations.at(type).size() == 0;
+        return type == "$" || derivations.at(type).size() == 0;
     }
     bool produces_epsilon(std::string type) const{
         return produces_epsilon_map.at(type);

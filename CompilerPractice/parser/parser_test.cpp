@@ -121,7 +121,6 @@ TEST_CASE("item_operations"){
     REQUIRE(item.at_end());
 }
 
-//Only uses the LR(0) structure (and sometimes technically not even that)
 TEST_CASE("computes_closure_of_single_element"){
     parser::ItemSet<&g0> init = parser::ItemSet<&g0>(std::set<parser::Item<&g0>>{parser::Item<&g0>("Start",g0.der("Start").at(0))});
     REQUIRE(init.size() == 7);
@@ -146,6 +145,18 @@ TEST_CASE("computes_closure_of_multiple_elements_with_duplicates"){
         });
     REQUIRE(init.size() == 7);
 }
+TEST_CASE("itemset_less"){
+    parser::ItemSet<&g0> init1 = parser::ItemSet<&g0>(std::set<parser::Item<&g0>>{parser::Item<&g0>("Start",g0.der("Start").at(0))});
+    parser::ItemSet<&g0> init2 = parser::ItemSet<&g0>(std::set<parser::Item<&g0>>{
+        parser::Item<&g0>("E",g0.der("E").at(0)),
+        parser::Item<&g0>("E",g0.der("E").at(1)),
+        parser::Item<&g0>("T",g0.der("T").at(0)),
+        parser::Item<&g0>("T",g0.der("T").at(1)),
+        parser::Item<&g0>("F",g0.der("F").at(0)),
+        parser::Item<&g0>("F",g0.der("F").at(1)),
+        });
+    REQUIRE(((init1 < init2) != (init2 < init1)));
+}
 TEST_CASE("itemset_equality"){
     parser::ItemSet<&g0> init1 = parser::ItemSet<&g0>(std::set<parser::Item<&g0>>{parser::Item<&g0>("Start",g0.der("Start").at(0))});
     parser::ItemSet<&g0> init2 = parser::ItemSet<&g0>(std::set<parser::Item<&g0>>{
@@ -159,20 +170,38 @@ TEST_CASE("itemset_equality"){
         });
     REQUIRE(init1 == init2);
 }
-TEST_CASE("itemset_less"){
-    parser::ItemSet<&g0> init1 = parser::ItemSet<&g0>(std::set<parser::Item<&g0>>{parser::Item<&g0>("Start",g0.der("Start").at(0))});
-    parser::ItemSet<&g0> init2 = parser::ItemSet<&g0>(std::set<parser::Item<&g0>>{
+TEST_CASE("start_generates_inputend_lookahead"){
+    auto i = parser::Item<&g2>("Start",g2.der("Start").at(0));
+    parser::ItemSet<&g2> init = parser::ItemSet<&g2>(std::set<parser::Item<&g2>>{i});
+    REQUIRE(init.lookaheads(i) == std::set<std::string>{"$"});
+}
+TEST_CASE("closures_propagates_inputend_lookahead"){
+    parser::ItemSet<&g0> init = parser::ItemSet<&g0>(std::set<parser::Item<&g0>>{parser::Item<&g0>("Start",g0.der("Start").at(0))});
+    auto all_items = std::set<parser::Item<&g0>>{
+        parser::Item<&g0>("Start",g0.der("Start").at(0)),
         parser::Item<&g0>("E",g0.der("E").at(0)),
         parser::Item<&g0>("E",g0.der("E").at(1)),
         parser::Item<&g0>("T",g0.der("T").at(0)),
         parser::Item<&g0>("T",g0.der("T").at(1)),
         parser::Item<&g0>("F",g0.der("F").at(0)),
         parser::Item<&g0>("F",g0.der("F").at(1)),
-        });
-    REQUIRE(((init1 < init2) || (init2 < init1)));
+        };
+    for(auto i : all_items){
+        REQUIRE(init.lookaheads(i).count("$") == 1);
+    }
 }
 
-TEST_CASE("itemset_shift"){
+TEST_CASE("closures_generates_spontaneous_lookaheads"){
+    parser::ItemSet<&g0> init = parser::ItemSet<&g0>(std::set<parser::Item<&g0>>{parser::Item<&g0>("Start",g0.der("Start").at(0))});
+    auto i = parser::Item<&g0>("E",{"T"});
+    REQUIRE(init.lookaheads(i) == std::set<std::string>{"$","+"});
+    i = parser::Item<&g0>("T",{"T","*","F"});
+    REQUIRE(init.lookaheads(i) == std::set<std::string>{"$","+","*"});
+    i = parser::Item<&g0>("F",{"id"});
+    REQUIRE(init.lookaheads(i) == std::set<std::string>{"$","+","*"});
+}
+
+TEST_CASE("lr_zero_itemset_shift"){
     //See figure 4.31 on page 244 of the Dragon Book for the sizes of the sets
     //We test, in order, states 1,6,9,7,10
     parser::ItemSet<&g0> init = parser::ItemSet<&g0>(std::set<parser::Item<&g0>>{parser::Item<&g0>("Start",g0.der("Start").at(0))});

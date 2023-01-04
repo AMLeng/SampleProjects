@@ -70,11 +70,13 @@ class Item{//Represents an LR(0) item
 template <const grammar::Grammar* g>
 class ItemSet{//Represents a set of LR(1) items---in particular stores lookaheads!
     public:
-    ItemSet(std::set<Item<g>> kernel) : items(generate_lookaheads(kernel)){
-        this->closure();
+    ItemSet(std::set<Item<g>> kernel) : items(closure(generate_lookaheads(kernel))){
     }
+    //Compare only the LR(0) item portions
     bool operator<(const ItemSet<g>& rhs) const{
-        return lexicographical_compare(items.begin(),items.end(), rhs.items.begin(), rhs.items.end());
+        return lexicographical_compare(items.begin(),items.end(), 
+            rhs.items.begin(), rhs.items.end(),
+            [](auto lhs, auto rhs){return lhs.first < rhs.first;});
     }
     bool operator==(const ItemSet<g>& rhs) const{
         return !(*this < rhs) && !(rhs < *this);
@@ -94,61 +96,131 @@ class ItemSet{//Represents a set of LR(1) items---in particular stores lookahead
         return ItemSet<g>(items);
     }
     void print() const{
-        for(auto i : items){
+        for(auto pair : items){
+            auto i = pair.first;
             std::cout<<"Item: ";
             i.print();
+            std::cout<<"Lookaheads: ";
+            for(auto la : pair.second){
+                std::cout<<la;
+            }
+            std::cout<<std::endl;
         }
     }
     int size() const{
         return items.size();
     }
+    std::set<Type> lookaheads(Item<g> item) const{
+        return items.at(item);
+    }
     private:
+    //Must not be const since we will typically be adding lookaheads to an itemset after it has been created
     std::map<Item<g>,std::set<Type>> items;
-    //Need to define this
     static std::map<Item<g>, std::set<Type>> generate_lookaheads(std::set<Item<g>> items){
         auto item_map = std::map<Item<g>,std::set<Type>>();
         for(auto i : items){
-            item_map.emplace(i,std::set<Type>());
+            if(i.left == "Start"){
+                item_map.emplace(i,std::set<Type>{"$"});
+            }else{
+                item_map.emplace(i,std::set<Type>());
+            }
         }
         return item_map;
     }
-    //Need to update this for LR(1) itemsets
-    void closure(){
-        auto already_seen = std::set<Item<g>>();
-        while(already_seen.size() != items.size()){
-            for(auto pair : items){
-                Item<g> i = pair.first;
-                std::set<Type> previous_lookaheads = pair.second;
-                if(already_seen.find(i) == already_seen.end()){
-                    already_seen.insert(i);
-                    if(!i.at_end()){
-                        auto next_type = i.right.at(i.position);
-                        //Compute the possible lookaheads;
-                        //Importantly, note that the lookaheads are the same
-                        //for every derivation of next_type
-                        auto lookaheads = std::set<Type>();
-                        int index = i.position+1;
-                        for(; index < i.right.size(); index++){
-                            for(auto t : g->first_set(i.right.at(index))){
-                                lookaheads.emplace(t);
-                            }
-                            if(!g->produces_epsilon(i.right.at(index))){
-                                break;
+    static void closure_lookahead_helper(
+        const std::map<Item<g>,std::set<Type>>& item_map, 
+        const Item<g>& i, 
+        std::map<Type,std::set<Type>>& lookaheads)
+    {
+        if(i.position < i.right.size()){
+            auto next_type = i.right.at(i.position);
+            int index = i.position+1;
+            for(; index < i.right.size(); index++){
+                for(auto t : g->first_set(i.right.at(index))){
+                    lookaheads.at(next_type).emplace(t);
+                }
+                if(!g->produces_epsilon(i.right.at(index))){
+                    break;
+                }
+            }
+            if(index == i.right.size()){
+                for(auto t : item_map.at(i)){
+                    lookaheads.at(next_type).emplace(t);
+                }
+                //Adds a nonterminal to the lookahead set
+                //which must be expanded later
+                lookaheads.at(next_type).emplace(i.left);
+            }
+        }
+    }
+    static std::map<Item<g>,std::set<Type>> closure(std::map<Item<g>,std::set<Type>> item_map){
+        auto added = std::map<Type,bool>();
+        auto to_add = std::map<Type,bool>();
+        auto lookaheads = std::map<Type,std::set<Type>>();
+        for(auto pair : g->derivations){
+            added.emplace(pair.first,false);
+            to_add.emplace(pair.first,false);
+            lookaheads.emplace(pair.first,std::set<Type>());
+        }
+        for(auto pair : item_map){
+            auto i = pair.first;
+            if(!i.at_end()){
+                to_add.at(i.right.at(i.position)) = true;
+            }
+            //Every time a given item creates additional items for the closure
+            //We also need to keep track of the relevant additional lookaheads
+            closure_lookahead_helper(item_map,i,lookaheads);
+        }
+        //Add LR(0) items
+        while(added != to_add){
+            for(auto pair : to_add){
+                if(pair.second && !added.at(pair.first)){
+                    for(auto new_derivation : g->derivations.at(pair.first)){
+                        auto i = Item<g>(pair.first,new_derivation);
+                        item_map.emplace(i,std::set<Type>());
+                        if(!i.at_end()){
+                            to_add.at(i.right.at(i.position)) = true;
+                        }
+                        closure_lookahead_helper(item_map,i,lookaheads);
+                    }
+                    added.at(pair.first) = true;
+                }
+            }
+        }
+        //Expand the nonterminals in our stored lookaheads
+        bool lookahead_added;
+        do{
+            lookahead_added = false;
+            for(auto& pair : lookaheads){
+                for(auto nonterminal_lookahead : pair.second){
+                    if(!g->is_terminal(nonterminal_lookahead)){
+                        for(auto lookahead : lookaheads.at(nonterminal_lookahead)){
+                            if(g->is_terminal(lookahead) && pair.second.find(lookahead) == pair.second.end()){
+                                pair.second.emplace(lookahead);
+                                lookahead_added = true;
                             }
                         }
-                        if(index == i.right.size()){
-                            for(auto t : previous_lookaheads){
-                                lookaheads.emplace(t);
-                            }
-                        }
-                        //Add in each possible derivation
-                        for(auto derivation : g->der(next_type)){
-                            items.emplace(Item<g>(next_type,derivation),lookaheads);
+                    }
+                }
+            }
+        }while(lookahead_added);
+
+        //Now that we've compiled the lookaheads produced, go back and add them to our item map
+        for(auto pair : lookaheads){
+            if(added.at(pair.first)){
+                for(auto new_derivation : g->derivations.at(pair.first)){
+                    auto i = Item<g>(pair.first,new_derivation);
+                    for(auto lookahead : pair.second){
+                        //Only add terminals
+                        if(g->is_terminal(lookahead)){
+                            item_map.at(i).emplace(lookahead);
                         }
                     }
                 }
             }
         }
+
+        return item_map;
     }
 };
 
