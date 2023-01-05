@@ -70,7 +70,9 @@ class Item{//Represents an LR(0) item
 template <const grammar::Grammar* g>
 class ItemSet{//Represents a set of LR(1) items---in particular stores lookaheads!
     public:
-    ItemSet(std::set<Item<g>> kernel) : items(closure(generate_lookaheads(kernel))){
+    ItemSet(std::map<Item<g>,std::set<Type>> kernel) : items(closure(kernel)){
+    }
+    ItemSet(std::set<Item<g>> kernel) : ItemSet(set_to_map(kernel)){
     }
     //Compare only the LR(0) item portions
     bool operator<(const ItemSet<g>& rhs) const{
@@ -81,16 +83,12 @@ class ItemSet{//Represents a set of LR(1) items---in particular stores lookahead
     bool operator==(const ItemSet<g>& rhs) const{
         return !(*this < rhs) && !(rhs < *this);
     }
-    //Codewise is simple to do but there are actually two (or three) things going on here
-    //We take a LALR(1) item set, forget the lookaheads (by only looking at the first element of the pairs in the map)
-    //And then, for each item, shift
-    //This thus produces a LR(0) kernel
-    //Which the constructor turns into the corresponding closed LALR(1) item set
+    //Takes every element, and shifts the item if possible, leaving the lookaheads the same
     ItemSet<g> shift(Type next_type) const{
-        auto items = std::set<Item<g>>();
+        auto items = std::map<Item<g>,std::set<Type>>();
         for(const auto& prev_item_pair : this->items){
             if(!prev_item_pair.first.at_end() && prev_item_pair.first.next()==next_type){
-                items.insert(prev_item_pair.first.shift());
+                items.emplace(prev_item_pair.first.shift(),prev_item_pair.second);
             }
         }
         return ItemSet<g>(items);
@@ -113,10 +111,30 @@ class ItemSet{//Represents a set of LR(1) items---in particular stores lookahead
     std::set<Type> lookaheads(Item<g> item) const{
         return items.at(item);
     }
+    bool take_lookaheads(const ItemSet<g>& other){
+        bool lookahead_taken = false;
+        if(!(*this == other) || this->full_compare(other)){
+            return lookahead_taken;
+        }//Must have same LR(0) item sets with different lookaheads
+        for(auto& pair : items){
+            auto lookaheads = other.items.at(pair.first);
+            for(auto la : lookaheads){
+                auto insert_result = pair.second.emplace(la);
+                if(insert_result.second){
+                    lookahead_taken = true;
+                }
+            }
+        }
+        return lookahead_taken;
+    }
     private:
     //Must not be const since we will typically be adding lookaheads to an itemset after it has been created
     std::map<Item<g>,std::set<Type>> items;
-    static std::map<Item<g>, std::set<Type>> generate_lookaheads(std::set<Item<g>> items){
+    bool full_compare(const ItemSet<g>& rhs) const{
+        return lexicographical_compare(items.begin(),items.end(), 
+            rhs.items.begin(), rhs.items.end());
+    }
+    static std::map<Item<g>, std::set<Type>> set_to_map(std::set<Item<g>> items){
         auto item_map = std::map<Item<g>,std::set<Type>>();
         for(auto i : items){
             if(i.left == "Start"){
@@ -224,7 +242,6 @@ class ItemSet{//Represents a set of LR(1) items---in particular stores lookahead
     }
 };
 
-/*
 template <const grammar::Grammar* g>
 class Parser{
     public:
@@ -232,11 +249,16 @@ class Parser{
     }
     Parser(Parser&) = delete;
     Parser(Parser&&) = delete;
-    int state_count(){
+    int state_count() const{
         return internals.first.size();
     }
-    template <typename TypeIterator>
-    const ItemSet<g>* eval(ItemSet<g> start_state, TypeIterator start, TypeIterator end){
+    void print() const{
+        for(const auto& set_pointer : internals.first){
+            set_pointer->print();
+            std::cout<<std::endl;
+        }
+    }
+    const ItemSet<g>* find(ItemSet<g> start_state) const{
         const ItemSet<g>* current = nullptr;
         for(auto& p : internals.first){
             if(*p == start_state){
@@ -244,27 +266,8 @@ class Parser{
                 break;
             }
         }
-        if(!current){
-            return nullptr;//Initial state was not in the Parser
-        }
-        for(auto it = start; it != end; it++){
-            current = transition(current, *it);
-        }
         return current;
     }
-    //The below assumes that the start_pointer is already one of the pointers managed by the unique_ptr in
-    //the set internals.first
-    template <typename TypeIterator>
-    const ItemSet<g>* eval(const ItemSet<g>* start_pointer, TypeIterator start, TypeIterator end){
-        for(auto it = start; it != end; it++){
-            start_pointer = transition(start_pointer, *it);
-        }
-        return start_pointer;
-    }
-    private:
-    //Pair of the set of items and the map for transitions
-    const std::pair<std::set<std::unique_ptr<const ItemSet<g>>>,std::map<const ItemSet<g>*,std::map<Type,const ItemSet<g>*>>> internals;
-
     const ItemSet<g>* transition(const ItemSet<g>* start, Type next_type) const{
         assert(internals.second.find(start) != internals.second.end());
         if(internals.second.at(start).find(next_type) == internals.second.at(start).end()){
@@ -273,40 +276,72 @@ class Parser{
             return internals.second.at(start).at(next_type);
         }
     }
+    //The below assumes that the start_pointer is already one of the pointers managed by the unique_ptr in
+    //the set internals.first
+    template <typename TypeIterator>
+    const ItemSet<g>* eval(const ItemSet<g>* start_pointer, TypeIterator start, TypeIterator end) const{
+        for(auto it = start; it != end; it++){
+            start_pointer = transition(start_pointer, *it);
+        }
+        return start_pointer;
+    }
+    template <typename TypeIterator>
+    const ItemSet<g>* eval(ItemSet<g> start_state, TypeIterator start, TypeIterator end) const{
+        auto current = find(start_state);
+        if(!current){
+            return nullptr;//Initial state was not in the Parser
+        }
+        return eval(current,start,end);
+    }
+    private:
+    //Pair of the set of items and the map for transitions
+    const std::pair<std::set<std::unique_ptr<const ItemSet<g>>>,std::map<const ItemSet<g>*,std::map<Type,const ItemSet<g>*>>> internals;
 
     static auto generate_item_sets(){
-        auto return_set = std::set<std::unique_ptr<const ItemSet<g>>>();
-        auto transition_map = std::map<const ItemSet<g>*,std::map<Type,const ItemSet<g>*>>();
-        auto to_add = std::deque<std::unique_ptr<const ItemSet<g>>>();
-        to_add.push_back(std::make_unique<const ItemSet<g>>(std::set<Item<g>>{Item<g>("Start",g->der("Start").at(0))}));
+        auto item_sets = std::set<std::unique_ptr<ItemSet<g>>>();
+        auto transition_map = std::map<ItemSet<g>*,std::map<Type,ItemSet<g>*>>();
+        auto to_add = std::deque<std::unique_ptr<ItemSet<g>>>();
+        to_add.push_back(std::make_unique<ItemSet<g>>(std::set<Item<g>>{Item<g>("Start",g->der("Start").at(0))}));
         while(to_add.size() > 0){
             auto current = to_add.front().get();
-            return_set.insert(std::move(to_add.front()));
+            item_sets.insert(std::move(to_add.front()));
             to_add.pop_front();
-            transition_map.emplace(current,std::map<Type,const ItemSet<g>*>());
+            transition_map.emplace(current,std::map<Type,ItemSet<g>*>());
             //Loop over possible transitions
             for(auto t : g->types){
                 auto possible_next = current->shift(t);
                 if(possible_next.size() == 0){
                     continue;
                 }
-                const ItemSet<g>* next_pointer = nullptr;
-                //See if the state after transitioning to t is already in our return_set
-                for(auto& p : return_set){
+                ItemSet<g>* next_pointer = nullptr;
+                //See if the state after transitioning to t is already dequed up to be added
+                for(auto& p : to_add){
                     if(*p == possible_next){
+                        //Even if it is present, lookaheads might be different
+                        //So we should add lookaheads from possible_next to p
+                        p->take_lookaheads(possible_next);
                         next_pointer = p.get();
                         break;
                     }
                 }
-                //Or is already dequed up to be added
-                for(auto& p : to_add){
+                //Or is already in our item_sets
+                //In which case we will add the return set's lookaheads to our current object
+                //And then delete the copy in the return set
+                for(auto& p : item_sets){
                     if(*p == possible_next){
-                        next_pointer = p.get();
+                        //Even if it is present, lookaheads might be different
+                        if(p->take_lookaheads(possible_next)){
+                            possible_next = *p;
+                            next_pointer = nullptr;
+                            item_sets.erase(p);
+                        }else{
+                            next_pointer = p.get();
+                        }
                         break;
                     }
                 }
                 if(!next_pointer){
-                    to_add.push_back(std::make_unique<const ItemSet<g>>(possible_next));
+                    to_add.push_back(std::make_unique<ItemSet<g>>(possible_next));
                     next_pointer = to_add.back().get();
                 }
                 //At this point, next_pointer is non-null, holding a pointer to an ItemSet managed by a unique_ptr
@@ -314,8 +349,26 @@ class Parser{
                 transition_map.at(current).emplace(t,next_pointer);
             }
         }
-        return std::make_pair(std::move(return_set),std::move(transition_map));
+        //Finally, end by creating const copies of everything
+        auto correspondence = std::map<ItemSet<g>*, const ItemSet<g>*>();
+        auto return_set = std::set<std::unique_ptr<const ItemSet<g>>>();
+        for(auto& p : item_sets){
+            auto insert_pair = return_set.insert(std::make_unique<const ItemSet<g>>(*p));
+            const ItemSet<g>* new_p = insert_pair.first->get();
+            correspondence.emplace(p.get(),new_p);
+        }
+        auto return_map = std::map<const ItemSet<g>*,std::map<Type,const ItemSet<g>*>>();
+        for(auto&p : transition_map){
+            auto current_index = correspondence.at(p.first);
+            return_map.emplace(current_index,std::map<Type,const ItemSet<g>*>());
+            for(auto& pair : p.second){
+                return_map.at(current_index).emplace(pair.first,correspondence.at(pair.second));
+            }
+        }
+        assert(return_set.size() == item_sets.size());
+        assert(return_map.size() == transition_map.size());
+        return std::make_pair(std::move(return_set),std::move(return_map));
     }
-};*/
+};
 } //namespace parser
 #endif //_PARSER_

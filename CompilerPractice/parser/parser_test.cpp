@@ -41,6 +41,20 @@ auto g4 = grammar::Grammar(std::map<parser::Type,std::vector<std::vector<parser:
     {"C",{{"b"},{"B","c"}}},
 }});
 
+//Grammar 4.55 on page 263 of the dragon book
+auto g5 = grammar::Grammar(std::map<parser::Type,std::vector<std::vector<parser::Type>>>{{
+    {"Start",{{"S"}}},
+    {"S",{{"C","C"}}},
+    {"C",{{"d"},{"c","C"}}},
+}});
+
+//Lvalue Rvalue grammar
+auto g6 = grammar::Grammar(std::map<parser::Type,std::vector<std::vector<parser::Type>>>{{
+    {"Start",{{"S"}}},
+    {"S",{{"L","=","R"},{"R"}}},
+    {"L",{{"id"},{"*","R"}}},
+    {"R",{{"L"}}},
+}});
 //Test grammar
 TEST_CASE("terminals_and_nonterminals"){
     auto g0_terminals = std::set<parser::Type>{"(",")","+","*","id"};
@@ -222,14 +236,13 @@ TEST_CASE("lr_zero_itemset_shift"){
     }
 }
 
-/*
 TEST_CASE("parser_generation_correct_size"){
-    //See figure 4.31 on page 244 of the Dragon Book for the complete Parser
+    //See figure 4.31 on page 244 of the Dragon Book for the complete LR(0) fsm
     parser::Parser<&g0> my_parser{};
     REQUIRE(my_parser.state_count() == 12);
 }
 TEST_CASE("parser_transitions"){
-    //See figure 4.31 on page 244 of the Dragon Book for the complete Parser
+    //See figure 4.31 on page 244 of the Dragon Book for the complet lr(0) fsm
     parser::Parser<&g0> my_parser{};
     parser::ItemSet<&g0> init = parser::ItemSet<&g0>(std::set<parser::Item<&g0>>{parser::Item<&g0>("Start",g0.der("Start").at(0))});
     parser::ItemSet<&g0> end = parser::ItemSet<&g0>(std::set<parser::Item<&g0>>{parser::Item<&g0>("F",{{"(","E",")"}}).shift().shift().shift()});
@@ -238,4 +251,18 @@ TEST_CASE("parser_transitions"){
     REQUIRE(*current_pointer == end);
     std::vector<parser::Type> symbols2 = {{")"}};
     REQUIRE(my_parser.eval(current_pointer,symbols2.begin(),symbols2.end()) == nullptr);
-}*/
+}
+TEST_CASE("parser_lookaheads"){
+    //See figure 4.41 on page 262 of the Dragon Book for the LR(1) graph
+    //Which gets collapsed into an LALR(1) graph that we use
+    parser::Parser<&g5> my_parser{};
+    REQUIRE(my_parser.state_count() == 7);
+    auto item1 = parser::Item<&g5>("C",g5.der("C").at(0)).shift();
+    auto set1 = parser::ItemSet<&g5>(std::set<parser::Item<&g5>>{item1});
+    auto set1_in_parser = my_parser.find(set1);
+    REQUIRE(set1_in_parser->lookaheads(item1) == std::set<std::string>{"c","d","$"});
+    auto item2 = parser::Item<&g5>("C",g5.der("C").at(1)).shift();
+    auto set2 = parser::ItemSet<&g5>(std::set<parser::Item<&g5>>{item2});
+    auto set2_in_parser = my_parser.find(set2);
+    REQUIRE(set2_in_parser->lookaheads(item2) == std::set<std::string>{"c","d","$"});
+}
