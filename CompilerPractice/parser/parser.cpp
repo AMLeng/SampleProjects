@@ -1,5 +1,3 @@
-#ifndef _PARSER
-#define _PARSER_
 #include <iostream>
 #include <cassert>
 #include <deque>
@@ -10,6 +8,7 @@
 #include <algorithm>
 #include <memory>
 #include "grammar.h"
+//#include "parser.h"
 namespace parser{
 
 typedef std::string Type;
@@ -268,7 +267,7 @@ class Parser{
         }
         return current;
     }
-    const ItemSet<g>* transition(const ItemSet<g>* start, Type next_type) const{
+    const ItemSet<g>* shift(const ItemSet<g>* start, Type next_type) const{
         assert(internals.second.find(start) != internals.second.end());
         if(internals.second.at(start).find(next_type) == internals.second.at(start).end()){
             return nullptr;
@@ -276,22 +275,13 @@ class Parser{
             return internals.second.at(start).at(next_type);
         }
     }
-    //The below assumes that the start_pointer is already one of the pointers managed by the unique_ptr in
-    //the set internals.first
-    template <typename TypeIterator>
-    const ItemSet<g>* eval(const ItemSet<g>* start_pointer, TypeIterator start, TypeIterator end) const{
-        for(auto it = start; it != end; it++){
-            start_pointer = transition(start_pointer, *it);
+    Item<g>* reduce(const ItemSet<g> start, Type next_type) const{
+        for(const auto& item : start){
+            if(item.at_end() && item.lookaheads.find(next_type) != item.lookaheads.end()){
+                return &item;
+            }
         }
-        return start_pointer;
-    }
-    template <typename TypeIterator>
-    const ItemSet<g>* eval(ItemSet<g> start_state, TypeIterator start, TypeIterator end) const{
-        auto current = find(start_state);
-        if(!current){
-            return nullptr;//Initial state was not in the Parser
-        }
-        return eval(current,start,end);
+        return nullptr;
     }
     private:
     //Pair of the set of items and the map for transitions
@@ -371,4 +361,3 @@ class Parser{
     }
 };
 } //namespace parser
-#endif //_PARSER_

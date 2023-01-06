@@ -1,4 +1,4 @@
-#include "parser.h"
+#include "parser.cpp"
 #include "grammar.h"
 #include "catch2/catch.hpp"
 #include <vector>
@@ -247,10 +247,14 @@ TEST_CASE("parser_transitions"){
     parser::ItemSet<&g0> init = parser::ItemSet<&g0>(std::set<parser::Item<&g0>>{parser::Item<&g0>("Start",g0.der("Start").at(0))});
     parser::ItemSet<&g0> end = parser::ItemSet<&g0>(std::set<parser::Item<&g0>>{parser::Item<&g0>("F",{{"(","E",")"}}).shift().shift().shift()});
     std::vector<parser::Type> symbols = {{"(","T","*","(","E",")"}};
-    auto current_pointer = my_parser.eval(init,symbols.begin(),symbols.end());
+    auto current_pointer = my_parser.shift(my_parser.find(init),"(");
+    current_pointer = my_parser.shift(current_pointer,"T");
+    current_pointer = my_parser.shift(current_pointer,"*");
+    current_pointer = my_parser.shift(current_pointer,"(");
+    current_pointer = my_parser.shift(current_pointer,"E");
+    current_pointer = my_parser.shift(current_pointer,")");
     REQUIRE(*current_pointer == end);
-    std::vector<parser::Type> symbols2 = {{")"}};
-    REQUIRE(my_parser.eval(current_pointer,symbols2.begin(),symbols2.end()) == nullptr);
+    REQUIRE(my_parser.shift(current_pointer,")") == nullptr);
 }
 TEST_CASE("parser_lookaheads"){
     //See figure 4.41 on page 262 of the Dragon Book for the LR(1) graph
