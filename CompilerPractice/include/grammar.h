@@ -132,8 +132,5 @@ struct Grammar{
         }
     }
 };
-auto decaf_grammar = Grammar(std::map<std::string,std::vector<std::vector<std::string>>>{{
-    //Insert grammar rules for decaf here
-}});
 } //namespace grammar
 #endif //_GRAMMAR_

@@ -37,7 +37,7 @@ void ItemSet<g>::print() const{
         i.print();
         std::cout<<"Lookaheads: ";
         for(auto la : pair.second){
-            std::cout<<la;
+            std::cout<<la<<',';
         }
         std::cout<<std::endl;
     }
