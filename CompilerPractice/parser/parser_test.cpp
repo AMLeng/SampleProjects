@@ -55,6 +55,7 @@ auto g6 = grammar::Grammar(std::map<parser::Type,std::vector<std::vector<parser:
     {"L",{{"id"},{"*","R"}}},
     {"R",{{"L"}}},
 }});
+
 //Test grammar
 TEST_CASE("terminals_and_nonterminals"){
     auto g0_terminals = std::set<parser::Type>{"(",")","+","*","id"};
@@ -220,10 +221,8 @@ TEST_CASE("lr_zero_itemset_shift"){
     //We test, in order, states 1,6,9,7,10
     parser::ItemSet<&g0> init = parser::ItemSet<&g0>(std::set<parser::Item<&g0>>{parser::Item<&g0>("Start",g0.der("Start").at(0))});
     auto current = init.shift("E");
-    std::cout<<std::endl;
     REQUIRE(current.size() == 2);
     current = current.shift("+");
-    std::cout<<std::endl;
     REQUIRE(current.size() == 5);
     current = current.shift("T");
     REQUIRE(current.size() == 2);
@@ -246,7 +245,6 @@ TEST_CASE("parser_transitions"){
     parser::Parser<&g0> my_parser{};
     parser::ItemSet<&g0> init = parser::ItemSet<&g0>(std::set<parser::Item<&g0>>{parser::Item<&g0>("Start",g0.der("Start").at(0))});
     parser::ItemSet<&g0> end = parser::ItemSet<&g0>(std::set<parser::Item<&g0>>{parser::Item<&g0>("F",{{"(","E",")"}}).shift().shift().shift()});
-    std::vector<parser::Type> symbols = {{"(","T","*","(","E",")"}};
     auto current_pointer = my_parser.shift(my_parser.find(init),"(");
     current_pointer = my_parser.shift(current_pointer,"T");
     current_pointer = my_parser.shift(current_pointer,"*");
@@ -269,4 +267,41 @@ TEST_CASE("parser_lookaheads"){
     auto set2 = parser::ItemSet<&g5>(std::set<parser::Item<&g5>>{item2});
     auto set2_in_parser = my_parser.find(set2);
     REQUIRE(set2_in_parser->lookaheads(item2) == std::set<std::string>{"c","d","$"});
+}
+TEST_CASE("parser_lookaheads_part_2"){
+    //See figure 4.47 on page 275 of the Dragon Book for the lookahead table
+    parser::Parser<&g6> my_parser{};
+    REQUIRE(my_parser.state_count() == 10);
+    auto item1 = parser::Item<&g6>("R",{"L"}).shift();
+    auto set1 = parser::ItemSet<&g6>(std::set<parser::Item<&g6>>{item1});
+    auto set1_in_parser = my_parser.find(set1);
+    REQUIRE(set1_in_parser->lookaheads(item1) == std::set<std::string>{"=","$"});
+    auto item2 = parser::Item<&g6>("S",{"L","=","R"}).shift().shift().shift();
+    auto set2 = parser::ItemSet<&g6>(std::set<parser::Item<&g6>>{item2});
+    auto set2_in_parser = my_parser.find(set2);
+    REQUIRE(set2_in_parser->lookaheads(item2) == std::set<std::string>{"$"});
+}
+TEST_CASE("parser_lookaheads_part_3"){
+    //See figure 4.47 on page 275 of the Dragon Book for the lookahead table
+    parser::Parser<&g0> my_parser{};
+    auto item1 = parser::Item<&g0>("F",{"(","E",")"}).shift();
+    auto set1 = parser::ItemSet<&g0>(std::set<parser::Item<&g0>>{item1});
+    auto set1_in_parser = my_parser.find(set1);
+    REQUIRE(set1_in_parser->lookaheads(item1) == std::set<std::string>{"+","*","$",")"});
+    auto item2 = parser::Item<&g0>("T",{"F"});
+    REQUIRE(set1_in_parser->lookaheads(item2) == std::set<std::string>{")","+","*"});
+    auto set2_in_parser = my_parser.shift(set1_in_parser, "F");
+    auto item3 = parser::Item<&g0>("T",{"F"}).shift();
+    REQUIRE(set2_in_parser->lookaheads(item3) == std::set<std::string>{")","+","*","$"});
+}
+TEST_CASE("parses_expression_grammar"){
+    parser::Parser<&g0> my_parser{};
+    std::vector<parser::Type> input = {{"(","id","*","id",")","*","id","+","id","*","id"}};
+    REQUIRE(my_parser.parses(input.begin(),input.end()));
+    //Extra paren
+    input = std::vector<parser::Type>{{"(","id","*","id",")","*","id","+","id","*","id",")"}};
+    REQUIRE(!my_parser.parses(input.begin(),input.end()));
+    //Missing id
+    input = std::vector<parser::Type>{{"(","id","*","id",")","*","id","+","id","*"}};
+    REQUIRE(!my_parser.parses(input.begin(),input.end()));
 }
