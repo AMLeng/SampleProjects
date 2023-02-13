@@ -9,7 +9,7 @@ auto decaf_grammar = grammar::Grammar(std::map<std::string,std::vector<std::vect
     {"Decl",{{"VariableDecl"},{"FunctionDecl"},{"ClassDecl"},{"InterfaceDecl"}}},
     {"VariableDecl",{{"Variable",";"}}},
     {"Variable",{{"Type","Ident"}}},
-    {"Type",{{"Int"},{"Bool"},{"Double"},{"String"},{"Ident"},{"Type","[","]"}}},
+    {"Type",{{"int"},{"bool"},{"double"},{"string"},{"Ident"},{"Type","[","]"}}},
     {"FunctionDecl",{{"Type","Ident","(","Formals",")","StmtBlock"},{"void","Ident","(","Formals",")","StmtBlock"}}},
     {"Formals",{{},{"VariableList"}}},
     {"VariableList",{{"Variable"},{"Variable",",","VariableList"}}},

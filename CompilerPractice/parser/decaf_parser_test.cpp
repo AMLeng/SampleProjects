@@ -1,3 +1,4 @@
+#include "ast.h"
 #include "parser.cpp"
 #include "decaf_grammar.h"
 #include "catch2/catch.hpp"
