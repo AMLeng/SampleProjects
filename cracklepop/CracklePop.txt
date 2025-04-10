@@ -1,0 +1,68 @@
+Register 0: Load in all the other registers and run the program by calling the macro j
+gg3j"ay$2j"by$2j"cy$2j"dy$2j"ey$2j"fy5j7j"gy$2j"hy$2j"iy$2j"jy$2j"xye"zyew"yye"Zye
+Register a: Submacro used by macro e, to mark indices divisible by 3
+r23l
+Register b: Submacro used by macro e, to mark indices divisible by 5
+r35l
+Register c: Submacro used by macro e, to mark indices divisible by 15
+r415l
+Register d: Text, used by macro e; the number 1 repeated 15 times, to be repeated and then used for sieving
+111111111111111
+Register e: Takes the number under the cursor and returns (in register 4) 1 if not divisible by 3 or 5, 2 if only 3, 3 if only 5, 4 if both 3 and 5
+0"2d$@2"dP0@2@a0@2@b0@2@c0@2l"4yl0d$
+Register f: Helper data for g, encoding the possible branches of a switch statement
+(
+"2p
+"xp
+"yp
+"zp
+)
+Register g: Depending on the value of register 4 (ranging 1-4), prints the value in register 2,x,y,z respectively
+"fP@4j"5y$"_da(@5
+Register h: If the cursor is sitting on a line which consists of one positive integer N, replaces N with N-1
+
+Register i: If the cursor is on a line with a number N, halts the program if N==1, else does nothing
+"3diw@3"3p0lh"_dw"3p
+Register j: Main program loop; if sitting on a line with N>1, adds a line above with N-1 then replaces N with Crackle/Pop as necessary
+@i"1YP@hj@e@g0k@j
+Registers x, y, and z: Hold the texts "Crackle", "Pop", and "CracklePop" respectively
+Crackle Pop
+----------------------------------------
+This is a program in Vim macros which runs CracklePop:
+it prints the numbers from 1 to N, replacing numbers
+divisible by 3 with "Crackle", those divisible by 5
+with "Pop", and those divisible by both 3 and 5 with
+"CracklePop".
+
+The entire program operates within Vim normal mode.
+
+We entirely avoid command line mode since that would
+make things way too easy; in particular, we also avoid
+the expression register, and implement the necessary
+conditional through the switch statement encoded by
+registers f and g.
+
+Except for a single use of  in the outer loop, we
+also avoid any special characters (aside from newlines);
+in particular, we entirely avoid insert mode since this
+would require using  to escape out of it. I believe that
+it is possible to extend the techniques already used in this
+program to avoid using any special characters, but as I
+didn't think I'd learn anything from doing so, I have avoided
+working out the details.
+
+To run this program ensure that the last line of the file
+is the input value (the maximum value we should consider)
+and type:
+
+2ggy$@0
+
+This will yank the initialization macro
+from the second line of this file into the
+0 register and subsequently kick off the program.
+
+If this fails, check that the line under "Register h"
+consists of the single special character for ctrl + X,
+rather than the two separate characters ^X
+----------------------------------------
+100
