@@ -1,5 +1,5 @@
-Register 0: Load in all the other registers and run the program by calling the macro j
-gg3j"ay$2j"by$2j"cy$2j"dy$2j"ey$2j"fy5j7j"gy$2j"hy$2j"iy$2j"jy$2j"xye"zyew"yye"Zye
+Register 0: Load in all the other registers and run the program by jumping to the last line and calling the macro j
+gg3j"ay$2j"by$2j"cy$2j"dy$2j"ey$2j"fy5j7j"gy$2j"hy$2j"iy$2j"jy$2j"xye"zyew"yye"ZyeG@j
 Register a: Submacro used by macro e, to mark indices divisible by 3
 r23l
 Register b: Submacro used by macro e, to mark indices divisible by 5
